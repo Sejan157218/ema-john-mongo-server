@@ -21,25 +21,44 @@ async function run() {
 
 
         const database = client.db("ema_John");
-        const productcollection = database.collection("products");
+        const productCollection = database.collection("products");
+        const orderCollection = database.collection("orders");
 
         // get products
         app.get('/products', async (req, res) => {
-            const cursor = productcollection.find({});
-            const products = await cursor.toArray();
+            const cursor = productCollection.find({});
+            const page = req.query.page;
+            const size = parseInt(req.query.size);
             const count = await cursor.count();
+            let products;
+
+            if (page) {
+                products = await cursor.skip(page * size).limit(size).toArray();
+            }
+            else {
+                products = await cursor.toArray();
+            }
             res.send({
                 count,
                 products,
             });
         })
-        // create a document to insert
-        //   const doc = {
-        //     title: "Record of a Shriveled Datum",
-        //     content: "No bytes, no problem. Just insert a document, in MongoDB",
-        //   }
-        //   const result = await haiku.insertOne(doc);
-        //   console.log(`A document was inserted with the _id: ${result.insertedId}`);
+
+
+        // app post
+        app.post('/products/bykeys', async (req, res) => {
+            const keys = req.body;
+            const query = { key: { $in: keys } }
+            const products = await productCollection.find(query).toArray();
+            res.json(products);
+        })
+
+        app.post('/orders', async (req, res) => {
+            const order = req.body;
+            const results = await orderCollection.insertOne(order);
+            res.json(results);
+
+        })
     } finally {
         //   await client.close();
     }
